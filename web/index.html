@@ -1,0 +1,2329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>大肥鱼</title>
+<style>
+  :root {
+    --bg: #04121a;
+    --bg2: #072330;
+    --glass: rgba(12, 40, 54, 0.72);
+    --line: rgba(126, 231, 255, 0.16);
+    --fish: #7fe3ff;
+    --fish-dim: #3d9fbd;
+    --text: #dbeeff;
+    --muted: #7d9db0;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(1200px 600px at 20% -10%, #0b3f57 0%, transparent 60%),
+      radial-gradient(900px 500px at 90% 110%, #0a3247 0%, transparent 60%),
+      linear-gradient(180deg, var(--bg2), var(--bg));
+    overflow: hidden;
+  }
+  .bubbles { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .bubbles i {
+    position: absolute; bottom: -40px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(190,240,255,.5), rgba(120,200,230,.06));
+    animation: rise linear infinite;
+  }
+  @keyframes rise {
+    to { transform: translateY(-115vh) translateX(20px); opacity: 0; }
+  }
+  .app {
+    position: relative; height: 100%; max-width: 760px; margin: 0 auto;
+    display: flex; flex-direction: column;
+  }
+  header {
+    padding: 14px 18px 10px; display: flex; align-items: center; gap: 14px;
+    border-bottom: 1px solid var(--line);
+    backdrop-filter: blur(8px);
+  }
+  .avatar {
+    width: 62px; height: 62px; flex: 0 0 auto;
+    display: grid; place-items: center;
+    filter: drop-shadow(0 6px 18px rgba(60,190,230,.35));
+  }
+  .avatar svg { animation: bob 3.6s ease-in-out infinite; }
+  @keyframes bob {
+    0%,100% { transform: translateY(0) rotate(-1.5deg); }
+    50% { transform: translateY(-5px) rotate(1.5deg); }
+  }
+  .who { flex: 1; min-width: 0; }
+  .who h1 { margin: 0; font-size: 19px; letter-spacing: .5px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 5px;
+    font-size: 11.5px; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px;
+  }
+  .sky { margin-top: 5px; font-size: 11px; color: var(--muted); opacity: .85; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #57d38c; }
+  .dot.off { background: #e8744f; }
+  .bars { display: flex; gap: 10px; padding: 10px 18px 12px; }
+  .bar { flex: 1; }
+  .bar span { font-size: 10.5px; color: var(--muted); }
+  .track { height: 5px; border-radius: 3px; background: rgba(255,255,255,.08); margin-top: 4px; overflow: hidden; }
+  .fill { height: 100%; width: 0; border-radius: 3px; transition: width .5s ease; }
+  .fill.mood { background: linear-gradient(90deg, #63b7ff, #9d8bff); }
+  .fill.full { background: linear-gradient(90deg, #ffb457, #ff7d6b); }
+  .fill.love { background: linear-gradient(90deg, #ff7aa8, #ff5f7e); }
+
+  .log { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 18px 26px; scroll-behavior: smooth; }
+  .log::-webkit-scrollbar { width: 6px; }
+  .log::-webkit-scrollbar-thumb { background: rgba(130,200,225,.18); border-radius: 3px; }
+
+  .row { display: flex; gap: 8px; margin: 12px 0; align-items: flex-end; }
+  .row.me { justify-content: flex-end; }
+  .bubble {
+    max-width: 76%; padding: 10px 14px; border-radius: 16px;
+    font-size: 15px; line-height: 1.65; white-space: pre-wrap; word-break: break-word;
+  }
+  .row.fish .bubble {
+    background: var(--glass); border: 1px solid var(--line);
+    border-bottom-left-radius: 5px;
+  }
+  .row.me .bubble {
+    background: linear-gradient(135deg, #1a6f8c, #17556d);
+    border-bottom-right-radius: 5px;
+  }
+  .sys { text-align: center; font-size: 11.5px; color: var(--muted); margin: 10px 0; }
+
+  .composer {
+    padding: 10px 14px calc(14px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    background: rgba(4, 18, 26, .72); backdrop-filter: blur(10px);
+    display: flex; flex-direction: column; gap: 9px;
+  }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pausebar {
+    display: none; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 12px; border-radius: 12px;
+    border: 1px solid rgba(255, 178, 82, .45);
+    background: rgba(255, 170, 70, .12);
+    color: #ffd9a0; font-size: 12.5px; line-height: 1.5;
+  }
+  .pausebar.on { display: flex; }
+  .pausebar span { flex: 1; min-width: 150px; }
+  .pausebar button {
+    border: 1px solid rgba(255, 178, 82, .55); background: rgba(255, 178, 82, .16);
+    color: #ffe4bd; font-size: 12px; padding: 5px 12px; border-radius: 999px;
+    cursor: pointer; white-space: nowrap;
+  }
+  .pausebar button:hover { background: rgba(255, 178, 82, .26); }
+  .chip:disabled { opacity: .42; cursor: default; }
+  .chip.pause.on {
+    background: rgba(255, 178, 82, .18); border-color: rgba(255, 178, 82, .55);
+    color: #ffd9a0;
+  }
+  .chip {
+    border: 1px solid var(--line); background: rgba(255,255,255,.03);
+    color: var(--text); font-size: 12.5px; padding: 6px 12px; border-radius: 999px;
+    cursor: pointer; transition: .18s; white-space: nowrap;
+  }
+  .chip:hover { background: rgba(126,231,255,.1); }
+  .chip.on { background: rgba(126,231,255,.16); border-color: rgba(126,231,255,.45); }
+  .inputrow { display: flex; gap: 9px; align-items: flex-end; }
+  textarea {
+    flex: 1; resize: none; min-height: 46px; max-height: 120px;
+    background: rgba(255,255,255,.045); color: var(--text);
+    border: 1px solid var(--line); border-radius: 14px;
+    padding: 12px 14px; font-size: 15px; font-family: inherit; line-height: 1.4;
+    outline: none;
+  }
+  textarea:focus { border-color: rgba(126,231,255,.4); }
+  button.icon {
+    width: 46px; height: 46px; border-radius: 14px; border: 1px solid var(--line);
+    background: rgba(255,255,255,.045); color: var(--text); font-size: 18px;
+    cursor: pointer; display: grid; place-items: center; transition: .18s;
+  }
+  button.icon:hover { background: rgba(126,231,255,.12); }
+  button.icon.rec { background: #b8323f; border-color: #ff6b7d; animation: pulse 1.1s infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 8px rgba(255,80,100,.12); } }
+  button.send {
+    width: 46px; height: 46px; border-radius: 14px; border: none; cursor: pointer;
+    background: linear-gradient(135deg, #2fb6d8, #1f7fa3); color: #04121a;
+    font-size: 18px; font-weight: 700; display: grid; place-items: center;
+  }
+  button.send:disabled { opacity: .4; cursor: default; }
+  .hint { font-size: 11px; color: var(--muted); text-align: center; }
+
+  /* ---- 记忆抽屉 ---- */
+  .sheet-mask {
+    position: fixed; inset: 0; background: rgba(2, 10, 16, .62); backdrop-filter: blur(3px);
+    display: none; z-index: 20; align-items: flex-end; justify-content: center;
+  }
+  .sheet-mask.on { display: flex; }
+  .sheet {
+    width: 100%; max-width: 760px; max-height: 82vh; display: flex; flex-direction: column;
+    background: linear-gradient(180deg, #0a2734, #061a24);
+    border-top: 1px solid var(--line); border-radius: 18px 18px 0 0;
+    padding: 14px 18px calc(16px + env(safe-area-inset-bottom));
+  }
+  .sheet-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .sheet-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+  .sheet-head .stat { flex: 1; font-size: 11px; color: var(--muted); }
+  .sheet-head button {
+    border: 1px solid var(--line); background: rgba(255,255,255,.04); color: var(--text);
+    font-size: 12px; padding: 5px 10px; border-radius: 9px; cursor: pointer;
+  }
+  .mem-list { overflow-y: auto; margin-top: 4px; }
+  .mem {
+    position: relative; padding: 9px 28px 10px 0;
+    border-bottom: 1px solid rgba(126,231,255,.08); font-size: 13px; line-height: 1.55;
+  }
+  .mem .meta { font-size: 10.5px; color: var(--muted); margin-bottom: 3px; }
+  .mem .rbar { height: 3px; border-radius: 2px; background: rgba(255,255,255,.08); margin-top: 6px; overflow: hidden; }
+  .mem .rbar i { display: block; height: 100%; background: linear-gradient(90deg, #63b7ff, #7ff3d6); }
+  .mem .del {
+    position: absolute; right: 0; top: 8px; border: none; background: none; color: var(--muted);
+    cursor: pointer; font-size: 13px;
+  }
+  .mem .del:hover { color: #ff8a8a; }
+  .mem.fuzzy .txt { opacity: .72; font-style: italic; }
+  .empty { color: var(--muted); font-size: 12.5px; padding: 18px 0; text-align: center; }
+  .cursor::after { content: "▍"; opacity: .5; animation: blink .9s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ---- 设置面板 ---- */
+  header .gear {
+    flex: 0 0 auto; width: 38px; height: 38px; margin-left: auto;
+    border-radius: 12px; border: 1px solid var(--line);
+    background: rgba(255,255,255,.04); color: var(--text); font-size: 17px;
+    cursor: pointer; display: grid; place-items: center; transition: .2s;
+  }
+  header .gear:hover { background: rgba(126,231,255,.12); transform: rotate(30deg); }
+
+  .set-mask {
+    position: fixed; inset: 0; z-index: 40; display: none;
+    align-items: center; justify-content: center; padding: 2vh 10px;
+    background: rgba(2, 10, 16, .72); backdrop-filter: blur(6px);
+  }
+  .set-mask.on { display: flex; }
+  .set-mask.full { padding: 0; }
+  .set-mask.full .set-panel {
+    width: 100%; height: 100%; max-height: none; border: none; border-radius: 0;
+  }
+  .set-panel {
+    width: min(1240px, 100%); height: min(95vh, 1080px); min-width: 0;
+    display: flex; flex-direction: column; overflow: hidden;
+    background: linear-gradient(180deg, #0b2b3a, #05161f);
+    border: 1px solid var(--line); border-radius: 18px;
+    box-shadow: 0 30px 90px rgba(0, 0, 0, .55);
+  }
+  .set-head {
+    display: flex; align-items: center; gap: 10px; padding: 13px 16px;
+    border-bottom: 1px solid var(--line); background: rgba(4, 18, 26, .55);
+  }
+  .set-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+  .set-head .state { flex: 1; font-size: 11.5px; color: var(--muted); }
+  .set-head .state.dirty { color: #ffcf7a; }
+  .set-head button {
+    border: 1px solid var(--line); background: rgba(255,255,255,.04); color: var(--text);
+    font-size: 12.5px; padding: 6px 12px; border-radius: 9px; cursor: pointer;
+  }
+  .set-head button:hover { background: rgba(126,231,255,.12); }
+  .set-head button.save {
+    background: linear-gradient(135deg, #2fb6d8, #1f7fa3); color: #04121a;
+    border: none; font-weight: 700;
+  }
+  .set-head button.save:disabled { opacity: .35; cursor: default; }
+  .set-head #setWide { padding: 6px 9px; font-size: 13px; line-height: 1; color: var(--muted); }
+  .set-head #setWide:hover { color: var(--text); }
+  .set-body { flex: 1; min-height: 0; min-width: 0; display: flex; }
+  .set-tabs {
+    width: 140px; flex: 0 0 auto; padding: 12px 8px; overflow-y: auto;
+    border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px;
+  }
+  .set-tab {
+    text-align: left; border: none; background: none; color: var(--muted);
+    font-size: 13px; padding: 9px 12px; border-radius: 10px; cursor: pointer; white-space: nowrap;
+  }
+  .set-tab:hover { background: rgba(126,231,255,.07); color: var(--text); }
+  .set-tab.on { background: rgba(126,231,255,.14); color: var(--text); }
+  .set-scroll { flex: 1; min-width: 0; overflow-y: auto; padding: 16px 20px 30px; }
+  .set-scroll::-webkit-scrollbar, .set-tabs::-webkit-scrollbar { width: 6px; }
+  .set-scroll::-webkit-scrollbar-thumb, .set-tabs::-webkit-scrollbar-thumb {
+    background: rgba(130,200,225,.18); border-radius: 3px;
+  }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .cards .card { padding: 12px 14px; }
+  .card { border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.025); }
+  .card h3 { margin: 0 0 3px; font-size: 13.5px; font-weight: 600; }
+  .card .sub { font-size: 11.5px; color: var(--muted); margin-bottom: 8px; line-height: 1.5; }
+  .cards .k { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .cards .v { font-size: 13px; margin-top: 5px; line-height: 1.55; word-break: break-all; }
+  .cards .v small { color: var(--muted); font-size: 11px; }
+  .card .mini {
+    margin-top: 9px; border: 1px solid var(--line); background: rgba(255,255,255,.03);
+    color: var(--text); font-size: 11px; padding: 4px 10px; border-radius: 8px; cursor: pointer;
+  }
+  .card .mini:hover { background: rgba(126,231,255,.1); }
+
+  .fld { display: flex; align-items: flex-start; gap: 16px; padding: 7px 0; border-bottom: 1px dashed rgba(126,231,255,.09); }
+  .fld:last-child { border-bottom: none; }
+  .fld .fbody { flex: 1; min-width: 0; }
+  .fld .lab { font-size: 13px; }
+  .fld .hint { font-size: 10.8px; color: var(--muted); margin-top: 2px; line-height: 1.35; text-align: left; }
+  .fld .ctl { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding-top: 2px; max-width: 100%; }
+  .fld.wide { flex-direction: column; gap: 7px; }
+  .fld.wide .ctl { width: 100%; }
+
+  /* 抽屉够宽时排两列，说明文字横跨整格：一屏能看完，不用一直滚 */
+  .card .fields { display: block; }
+  .set-scroll { container-type: inline-size; }
+  @container (min-width: 820px) {
+    .card .fields {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 28px; align-items: start;
+    }
+    .card .fields .fld {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto;
+      column-gap: 14px; row-gap: 2px; align-items: center;
+    }
+    .card .fields .fld .fbody { display: contents; }
+    .card .fields .fld .lab { grid-column: 1; grid-row: 1; }
+    .card .fields .fld .ctl { grid-column: 2; grid-row: 1; }
+    .card .fields .fld .hint { grid-column: 1 / -1; grid-row: 2; }
+    .card .fields .fld.wide { display: flex; grid-column: 1 / -1; align-items: stretch; }
+    .card .fields .fld.wide .fbody { display: block; }
+  }
+
+  .in {
+    background: rgba(255,255,255,.045); border: 1px solid var(--line); color: var(--text);
+    border-radius: 9px; padding: 7px 10px; font-size: 12.5px; font-family: inherit; outline: none;
+    transition: .18s;
+  }
+  .in:focus { border-color: rgba(126,231,255,.45); background: rgba(255,255,255,.06); }
+  .in.num { width: 92px; }
+  .in.sel { width: 230px; }
+  .in.sec { width: 235px; }
+  .in.txt { width: 280px; }
+  .in.ta { width: 100%; resize: vertical; line-height: 1.6; min-height: 62px; }
+
+  .slider { display: flex; align-items: center; gap: 9px; }
+  .slider input[type=range] { width: 180px; accent-color: var(--fish); }
+  .slider b { font-size: 12px; color: var(--fish); min-width: 48px; text-align: right; font-weight: 500; }
+
+  .sw {
+    position: relative; width: 42px; height: 23px; border-radius: 999px; padding: 0;
+    border: 1px solid var(--line); background: rgba(255,255,255,.06); cursor: pointer; transition: .18s;
+  }
+  .sw i {
+    position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%;
+    background: #8199a6; transition: .18s;
+  }
+  .sw.on { background: rgba(47,182,216,.35); border-color: rgba(126,231,255,.55); }
+  .sw.on i { left: 21px; background: var(--fish); }
+
+  .badge {
+    font-size: 9.5px; color: #ffcf7a; border: 1px solid rgba(255,207,122,.45);
+    border-radius: 6px; padding: 1px 5px; margin-left: 6px; vertical-align: 1px;
+  }
+  .presets { display: flex; flex-wrap: wrap; gap: 7px; margin: 2px 0 8px; }
+  .presets button, .pactions button {
+    border: 1px solid var(--line); background: rgba(255,255,255,.03); color: var(--text);
+    font-size: 11.5px; padding: 5px 11px; border-radius: 999px; cursor: pointer;
+  }
+  .presets button:hover, .pactions button:hover { background: rgba(126,231,255,.1); }
+  .adv { margin-top: 12px; text-align: center; }
+  /* ---- NapCat 一键启动 ---- */
+  .nap {
+    border: 1px solid rgba(126,231,255,.2); border-radius: 12px;
+    padding: 10px 12px; margin: 2px 0 10px;
+    background: linear-gradient(180deg, rgba(126,231,255,.09), rgba(126,231,255,.02));
+  }
+  .nap-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .nap-top b { font-size: 13px; letter-spacing: .3px; }
+  .nap-state { flex: 1; min-width: 120px; font-size: 12px; color: var(--muted); }
+  .nap-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .nap-actions .chip { padding: 5px 10px; font-size: 11.5px; }
+  .nap-actions .chip:disabled { opacity: .45; cursor: default; }
+  .nap-hint { font-size: 11.5px; color: var(--muted); line-height: 1.5; margin-top: 6px; }
+  .nap-qr { display: none; align-items: center; gap: 14px; margin-top: 10px; }
+  .nap-qr:not(:empty) { display: flex; }
+  .nap-qr img {
+    width: 168px; height: 168px; border-radius: 10px; background: #fff;
+    padding: 6px; object-fit: contain;
+  }
+  .nap-qr-tip { font-size: 12px; line-height: 1.7; color: var(--text); }
+  .nap-qr-tip small { color: var(--muted); }
+  .qhelp {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin: 2px 0 10px; padding: 9px 12px; border-radius: 10px;
+    background: rgba(126,231,255,.06); border: 1px solid rgba(126,231,255,.16);
+    font-size: 11.5px; line-height: 1.6;
+  }
+  .qhelp code {
+    font-family: Consolas, monospace; font-size: 11px; color: var(--fish);
+    background: rgba(0,0,0,.28); padding: 1px 6px; border-radius: 5px; word-break: break-all;
+  }
+  /* ---- 妹妹（鱼丸） ---- */
+  .sis {
+    border: 1px solid rgba(255,170,210,.22); border-radius: 12px;
+    padding: 10px 12px; margin: 2px 0 10px;
+    background: linear-gradient(180deg, rgba(255,170,210,.09), rgba(255,170,210,.02));
+  }
+  .sis-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .sis-top b { font-size: 13px; letter-spacing: .3px; }
+  .sis-state { flex: 1; min-width: 120px; font-size: 12px; color: var(--muted); }
+  .sis-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .sis-actions .chip { padding: 5px 10px; font-size: 11.5px; }
+  .sis-actions .chip:disabled { opacity: .45; cursor: default; }
+  .sis-hint { font-size: 11.5px; color: var(--muted); line-height: 1.6; margin-top: 6px; }
+  .sis-hint code { font-family: Consolas, monospace; color: var(--fish); font-size: 11px; }
+  /* 妹妹那张卡里的 NapCat 小面板：沿用 .nap 的样子，只调一下间距 */
+  .sis-nap { margin-top: 9px; }
+  .sis-nap .nap-top b { font-size: 12.5px; }
+  .sis-chat {
+    margin-top: 9px; max-height: 260px; overflow-y: auto; display: flex;
+    flex-direction: column; gap: 5px; font-size: 12px; line-height: 1.5;
+  }
+  .sis-chat:empty { display: none; }
+  .sis-chat::-webkit-scrollbar { width: 5px; }
+  .sis-chat::-webkit-scrollbar-thumb { background: rgba(126,231,255,.2); border-radius: 999px; }
+  .sis-line { display: flex; gap: 7px; align-items: baseline; }
+  .sis-line .who { flex: 0 0 34px; font-size: 10.5px; color: var(--muted); text-align: right; }
+  .sis-line .msg {
+    flex: 1; min-width: 0; padding: 4px 9px; border-radius: 9px;
+    background: rgba(255,255,255,.04); word-break: break-word; white-space: pre-wrap;
+  }
+  .sis-line.sis-say .msg { background: rgba(126,231,255,.1); }
+  .sis-line.sis-say .who { color: var(--fish); }
+  .eye { display: flex; align-items: center; gap: 6px; }
+  .eye-btn {
+    border: 1px solid var(--line); background: none; color: var(--muted);
+    border-radius: 8px; padding: 4px 7px; font-size: 11px; cursor: pointer;
+  }
+  .preview { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed rgba(126,231,255,.09); }
+  .preview .pv { font-size: 11px; color: var(--muted); }
+
+  .pbar { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+  .pfile {
+    border: 1px solid var(--line); background: rgba(255,255,255,.03); color: var(--text);
+    font-size: 12px; padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  }
+  .pfile.on { background: rgba(126,231,255,.16); border-color: rgba(126,231,255,.45); }
+  .pmeta { font-size: 11.5px; color: var(--muted); line-height: 1.6; }
+  .editor {
+    width: 100%; min-height: 42vh; margin: 8px 0 10px; padding: 12px 14px;
+    background: rgba(255,255,255,.04); border: 1px solid var(--line); border-radius: 12px;
+    color: var(--text); outline: none; resize: vertical; line-height: 1.7;
+    font-family: "Cascadia Code", Consolas, "Microsoft YaHei", monospace; font-size: 12.5px;
+  }
+  .editor:focus { border-color: rgba(126,231,255,.45); }
+  .pactions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  /* ---- 她自己改的那一段 ---- */
+  .selfbox {
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px dashed rgba(126,231,255,.14);
+  }
+  .selfbox h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+  .selfbox .selflist {
+    margin: 8px 0 10px; padding: 9px 12px; border-radius: 12px;
+    background: rgba(255,255,255,.03); border: 1px solid rgba(126,231,255,.12);
+  }
+  .selfbox .selfitem { font-size: 12.5px; line-height: 1.8; }
+  .selfbox .selflog { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
+  .selfbox .logrow {
+    display: flex; align-items: baseline; gap: 8px;
+    font-size: 11.5px; color: var(--muted); line-height: 1.6;
+  }
+  .selfbox .logrow span { flex: 1; min-width: 0; }
+  .selfbox .logrow button {
+    flex: 0 0 auto; border: 1px solid var(--line); background: rgba(255,255,255,.03);
+    color: var(--text); font-size: 11px; padding: 3px 8px; border-radius: 999px; cursor: pointer;
+  }
+  .selfbox .logrow button:hover { background: rgba(126,231,255,.12); }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 9vh; transform: translate(-50%, 10px);
+    z-index: 60; max-width: 82vw; padding: 9px 16px; border-radius: 999px;
+    background: rgba(10, 40, 54, .97); border: 1px solid rgba(126,231,255,.4);
+    color: var(--text); font-size: 12.5px; text-align: center; opacity: 0;
+    pointer-events: none; transition: .22s;
+  }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+  .toast.bad { border-color: rgba(255,140,140,.55); }
+
+  @media (max-width: 720px) {
+    .set-mask { padding: 0; }
+    .set-panel { height: 100%; max-height: none; border-radius: 0; border: none; }
+    .set-body { flex-direction: column; }
+    .set-head { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+    .set-head h2 { font-size: 14px; }
+    .set-head .state { order: 3; flex-basis: 100%; font-size: 11px; }
+    .set-head button { padding: 5px 10px; font-size: 12px; }
+    .set-tabs {
+      width: auto; flex-direction: row; gap: 6px; padding: 8px 10px;
+      border-right: none; border-bottom: 1px solid var(--line);
+    }
+    .set-tab { padding: 7px 11px; }
+    .set-scroll { padding: 12px 14px 26px; }
+    .fld { flex-direction: column; gap: 6px; }
+    .fld .ctl { width: 100%; }
+    .in.num, .in.sel, .in.txt, .in.sec { width: 100%; }
+    .slider { width: 100%; }
+    .slider input[type=range] { flex: 1; width: auto; }
+    .editor { min-height: 34vh; }
+  }
+  /* 发图 */
+  #imgPreview { display: none; gap: 8px; align-items: center; margin: 0 0 8px 2px; }
+  #imgPreview.on { display: flex; }
+  #imgPreview img { width: 56px; height: 56px; object-fit: cover; border-radius: 10px;
+    border: 1px solid rgba(120, 220, 255, .45); }
+  #imgPreview button { width: 22px; height: 22px; border-radius: 50%; border: 0; cursor: pointer;
+    background: rgba(255, 255, 255, .16); color: #cfefff; font-size: 14px; line-height: 1; }
+  .bubble .shot { display: block; max-width: 220px; max-height: 220px; border-radius: 10px; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="bubbles" id="bubbles"></div>
+
+<div class="app">
+  <header>
+    <div class="avatar">
+      <svg width="58" height="58" viewBox="0 0 64 64">
+        <defs>
+          <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#a9f0ff"/>
+            <stop offset="100%" stop-color="#2f93b8"/>
+          </linearGradient>
+        </defs>
+        <ellipse cx="30" cy="34" rx="21" ry="17" fill="url(#body)"/>
+        <path d="M50 34 L62 22 L60 34 L62 46 Z" fill="#5fc8e6"/>
+        <ellipse cx="22" cy="26" rx="8" ry="5" fill="rgba(255,255,255,.35)"/>
+        <circle cx="19" cy="32" r="4.2" fill="#04202b"/>
+        <circle cx="20.4" cy="30.6" r="1.4" fill="#eafcff"/>
+        <path d="M14 41 Q22 45 30 41" stroke="#0a4a5e" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="who">
+      <h1>大肥鱼</h1>
+      <div class="pill"><i class="dot" id="dot"></i><span id="brainLabel">连接中…</span></div>
+      <div class="sky" id="skyLine"></div>
+    </div>
+    <button class="gear" id="btnSettings" title="设置：模型、QQ、语音、人格">⚙️</button>
+  </header>
+
+  <div class="bars">
+    <div class="bar"><span>饱腹</span><div class="track"><div class="fill full" id="barFull"></div></div></div>
+    <div class="bar"><span>心情</span><div class="track"><div class="fill mood" id="barMood"></div></div></div>
+    <div class="bar"><span>亲近</span><div class="track"><div class="fill love" id="barLove"></div></div></div>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <div class="composer">
+    <div class="pausebar" id="pauseBar">
+      <span>⏸ 鲸鲸暂停中<span id="pauseSince"></span> · 不回消息，也不会自己找你</span>
+      <button type="button" id="btnResume">▶ 继续</button>
+    </div>
+    <div class="tools">
+      <button class="chip" id="btnFeed">🍤 投喂</button>
+      <button class="chip" id="btnPet">✋ 摸摸</button>
+      <button class="chip on" id="btnVoice">🔊 语音回复</button>
+      <button class="chip" id="btnRemember">📌 记住</button>
+      <button class="chip" id="btnMem">🧠 记忆</button>
+      <button class="chip" id="btnProactive">💌 说一句</button>
+      <button class="chip on" id="btnAutoTalk">🔔 主动开</button>
+      <button class="chip pause" id="btnPause" title="暂停鲸鲸：不回消息、不主动找你">⏸ 暂停</button>
+      <button class="chip" id="btnSettings2">⚙️ 设置</button>
+    </div>
+    <div id="imgPreview"></div>
+    <div class="inputrow">
+      <textarea id="input" rows="1" placeholder="跟大肥鱼说点什么…"></textarea>
+      <button class="icon" id="btnImg" title="发张图（也可以直接粘贴）">🖼</button>
+      <input type="file" id="fileImg" accept="image/*" hidden>
+      <button class="icon" id="btnMic" title="按住说话">🎤</button>
+      <button class="send" id="btnSend">↑</button>
+    </div>
+    <div class="hint">Enter 发送 · Shift+Enter 换行 · 点麦克风说话 · 点 🖼 或直接粘贴图片</div>
+  </div>
+</div>
+
+<div class="sheet-mask" id="memMask">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h2>🧠 她记得的事</h2>
+      <div class="stat" id="memStat"></div>
+      <button id="btnTidy">整理一下</button>
+      <button id="btnMemClose">关闭</button>
+    </div>
+    <div class="mem-list" id="memList"></div>
+  </div>
+</div>
+
+<div class="set-mask" id="setMask">
+  <div class="set-panel">
+    <div class="set-head">
+      <h2 id="setTitle">⚙️ 大肥鱼的设置</h2>
+      <div class="state" id="setState"></div>
+      <button id="setWide" title="铺满屏幕（多显示一些）">⤢</button>
+      <button class="save" id="setSave">保存</button>
+      <button id="setClose">关闭</button>
+    </div>
+    <div class="set-body">
+      <nav class="set-tabs" id="setTabs"></nav>
+      <div class="set-scroll" id="setForm"></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const log = $("log");
+const input = $("input");
+let ttsOn = true;
+let recording = false;
+let busy = false;
+let paused = false;
+let mediaRecorder = null;
+let chunks = [];
+let currentBubble = null;
+let currentAudio = null;
+let lastId = 0;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// 背景气泡
+(function makeBubbles() {
+  const box = $("bubbles");
+  for (let i = 0; i < 18; i++) {
+    const b = document.createElement("i");
+    const size = 4 + Math.random() * 14;
+    b.style.width = b.style.height = size + "px";
+    b.style.left = Math.random() * 100 + "%";
+    b.style.animationDuration = 9 + Math.random() * 14 + "s";
+    b.style.animationDelay = -Math.random() * 20 + "s";
+    box.appendChild(b);
+  }
+})();
+
+function setBars(s) {
+  if (!s) return;
+  $("barFull").style.width = Math.max(3, s.fullness) + "%";
+  $("barMood").style.width = Math.max(3, s.mood) + "%";
+  $("barLove").style.width = Math.max(3, s.affection) + "%";
+}
+
+function setBrain(b) {
+  if (!b) return;
+  $("brainLabel").textContent = b.label;
+  $("dot").className = "dot" + (b.kind === "offline" ? " off" : "");
+}
+
+function addBubble(text, who, image) {
+  const row = document.createElement("div");
+  row.className = "row " + who;
+  const b = document.createElement("div");
+  b.className = "bubble";
+  if (image) {
+    const im = document.createElement("img");
+    im.className = "shot";
+    im.src = image;
+    b.appendChild(im);
+  }
+  if (text) {
+    const t = document.createElement("div");
+    t.textContent = text;
+    b.appendChild(t);
+  } else if (!image) {
+    b.textContent = "";
+  }
+  row.appendChild(b);
+  log.appendChild(row);
+  log.scrollTop = log.scrollHeight;
+  return b;
+}
+
+// ---- 发图 ----
+let pendingImage = null;
+
+function clearImage() {
+  pendingImage = null;
+  const box = $("imgPreview");
+  box.innerHTML = "";
+  box.classList.remove("on");
+}
+
+function showImage(dataUrl) {
+  pendingImage = dataUrl;
+  const box = $("imgPreview");
+  box.innerHTML = "";
+  const img = document.createElement("img");
+  img.src = dataUrl;
+  const x = document.createElement("button");
+  x.type = "button";
+  x.textContent = "×";
+  x.title = "不要这张";
+  x.onclick = clearImage;
+  box.append(img, x);
+  box.classList.add("on");
+}
+
+// 缩到 1024 以内再发：token 少一半，她也看得清
+function shrinkImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const max = 1024;
+      let w = img.naturalWidth || img.width;
+      let h = img.naturalHeight || img.height;
+      const scale = Math.min(1, max / Math.max(w, h));
+      w = Math.max(1, Math.round(w * scale));
+      h = Math.max(1, Math.round(h * scale));
+      const c = document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("read failed"));
+    };
+    img.src = url;
+  });
+}
+
+async function takeFile(file) {
+  if (!file || !file.type || !file.type.startsWith("image/")) return;
+  try {
+    showImage(await shrinkImage(file));
+  } catch (e) {
+    addSys("这张图读不出来，换一张试试");
+  }
+}
+
+function addSys(text) {
+  const d = document.createElement("div");
+  d.className = "sys";
+  d.textContent = text;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function speak(text) {
+  if (!ttsOn || !text || paused) return;
+  try {
+    const res = await fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (res.status !== 200) return;
+    const blob = await res.blob();
+    const audio = new Audio(URL.createObjectURL(blob));
+    currentAudio = audio;
+    audio.play().catch(() => {});
+  } catch (e) {}
+}
+
+async function send() {
+  const text = input.value.trim();
+  if ((!text && !pendingImage) || busy) return;
+  if (paused) {
+    addSys("鲸鲸暂停中，先点「继续」");
+    return;
+  }
+  const image = pendingImage;
+  input.value = "";
+  input.style.height = "46px";
+  clearImage();
+  const mine = addBubble(text, "me", image);
+  busy = true;
+  $("btnSend").disabled = true;
+
+  const bubble = addBubble("", "fish");
+  bubble.classList.add("cursor");
+  let acc = "";
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(image ? { text, image } : { text }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      mine.remove();
+      bubble.remove();
+      input.value = text;
+      input.style.height = "46px";
+      if (image) showImage(image);
+      if (d.paused) paintPause(d);
+      addSys(d.error || ("她暂时没出来（" + res.status + "）"));
+      return;
+    }
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf("\n\n")) >= 0) {
+        const raw = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        for (const line of raw.split("\n")) {
+          if (!line.startsWith("data: ")) continue;
+          const evt = JSON.parse(line.slice(6));
+          if (evt.type === "delta") {
+            acc += evt.text;
+            bubble.textContent = acc;
+            log.scrollTop = log.scrollHeight;
+          } else if (evt.type === "done") {
+            if (evt.text) {
+              acc = evt.text;
+              bubble.textContent = acc;
+            }
+            if (evt.last_id) lastId = evt.last_id;
+            setBars(evt.state);
+            setBrain(evt.brain);
+          } else if (evt.type === "error") {
+            bubble.textContent = "（咕噜…出错了：" + evt.message + "）";
+          }
+        }
+      }
+    }
+    // 她要是分了两三条，就一条一条冒出来，别堆成一坨
+    const lines = acc.split("\n").map((s) => s.trim()).filter(Boolean);
+    if (lines.length > 1) {
+      bubble.textContent = lines[0];
+      log.scrollTop = log.scrollHeight;
+      for (let i = 1; i < lines.length; i++) {
+        await sleep(700 + Math.random() * 900);
+        addBubble(lines[i], "fish");
+      }
+    }
+  } catch (e) {
+    bubble.textContent = "（连不上本地服务，看看终端是不是关掉了）";
+  } finally {
+    bubble.classList.remove("cursor");
+    busy = false;
+    $("btnSend").disabled = paused;
+    if (acc) speak(acc);
+  }
+}
+
+async function quick(url) {
+  if (paused) {
+    addSys("鲸鲸暂停中，先点「继续」");
+    return;
+  }
+  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+  const data = await res.json();
+  if (!res.ok) {
+    if (data.paused) paintPause(data);
+    addSys(data.error || "她现在不出来");
+    return;
+  }
+  setBars(data.state);
+  addBubble(data.say, "fish");
+  speak(data.say);
+}
+
+async function loadHistory() {
+  try {
+    const res = await fetch("/api/history");
+    const data = await res.json();
+    setBrain(data.brain);
+    setBars(data.state);
+    lastId = data.last_id || 0;
+    if (data.messages && data.messages.length) {
+      data.messages.forEach((m) => addBubble(m.content, m.role === "user" ? "me" : "fish"));
+    } else {
+      addSys("大肥鱼刚刚被放进缸里。");
+      addBubble("咕噜……这是哪儿？你就是主人吗？", "fish");
+    }
+  } catch (e) {
+    addSys("加载失败，服务可能没起来。");
+  }
+}
+
+// ---- 语音输入 ----
+async function toggleMic() {
+  if (recording) {
+    mediaRecorder.stop();
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    chunks = [];
+    const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "";
+    mediaRecorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+    mediaRecorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+    mediaRecorder.onstop = async () => {
+      recording = false;
+      $("btnMic").classList.remove("rec");
+      stream.getTracks().forEach((t) => t.stop());
+      const blob = new Blob(chunks, { type: "audio/webm" });
+      if (blob.size < 1500) return;
+      addSys("正在听…");
+      const fd = new FormData();
+      fd.append("audio", blob, "speech.webm");
+      try {
+        const res = await fetch("/api/stt", { method: "POST", body: fd });
+        const data = await res.json();
+        if (data.text) {
+          input.value = data.text;
+          send();
+        } else {
+          addSys("没听清，再说一遍？");
+        }
+      } catch (e) {
+        addSys("语音识别没接上。");
+      }
+    };
+    mediaRecorder.start();
+    recording = true;
+    $("btnMic").classList.add("rec");
+  } catch (e) {
+    addSys("浏览器不给用麦克风。");
+  }
+}
+
+// ---- 事件 ----
+$("btnSend").onclick = send;
+$("btnMic").onclick = toggleMic;
+$("btnImg").onclick = () => $("fileImg").click();
+$("fileImg").onchange = (e) => {
+  takeFile(e.target.files && e.target.files[0]);
+  e.target.value = "";
+};
+document.addEventListener("paste", (e) => {
+  const items = [...(((e.clipboardData && e.clipboardData.items) || []))];
+  const item = items.find((i) => i.type && i.type.startsWith("image/"));
+  if (item) {
+    e.preventDefault();
+    takeFile(item.getAsFile());
+  }
+});
+$("btnFeed").onclick = () => quick("/api/feed");
+$("btnPet").onclick = () => quick("/api/pet");
+$("btnVoice").onclick = (e) => {
+  ttsOn = !ttsOn;
+  e.currentTarget.classList.toggle("on", ttsOn);
+};
+$("btnRemember").onclick = async () => {
+  const text = pool();
+  if (!text) return;
+  await fetch("/api/remember", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  addSys("记下了：" + text);
+};
+function pool() {
+  const t = input.value.trim();
+  return t;
+}
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    send();
+  }
+});
+input.addEventListener("input", () => {
+  input.style.height = "auto";
+  input.style.height = Math.min(120, input.scrollHeight) + "px";
+});
+
+// ---- 她的窗 ----
+async function loadSky() {
+  try {
+    const res = await fetch("/api/sky");
+    const data = await res.json();
+    $("skyLine").textContent = data.text || "";
+  } catch (e) {}
+}
+
+// ---- 记忆 ----
+function memEl(m) {
+  const row = document.createElement("div");
+  row.className = "mem" + (m.fuzzy ? " fuzzy" : "");
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  const pct = Math.round((m.retention || 0) * 100);
+  meta.textContent = m.ago + " · 记得 " + pct + "% · 重量 " + m.imp + "/5";
+  const txt = document.createElement("div");
+  txt.className = "txt";
+  txt.textContent = m.text;
+  const bar = document.createElement("div");
+  bar.className = "rbar";
+  const fill = document.createElement("i");
+  fill.style.width = Math.max(4, pct) + "%";
+  bar.appendChild(fill);
+  const del = document.createElement("button");
+  del.className = "del";
+  del.title = "忘掉这条";
+  del.textContent = "✕";
+  del.onclick = async () => {
+    await fetch("/api/memories/" + encodeURIComponent(m.id), { method: "DELETE" });
+    openMemories();
+  };
+  row.append(meta, txt, bar, del);
+  return row;
+}
+
+async function openMemories() {
+  $("memMask").classList.add("on");
+  const list = $("memList");
+  list.innerHTML = '<div class="empty">翻箱倒柜中…</div>';
+  try {
+    const res = await fetch("/api/memories?limit=60");
+    const data = await res.json();
+    const st = data.stats || {};
+    $("memStat").textContent =
+      "共 " + (st.total || 0) + " 条 · 平均还记得 " +
+      Math.round((st.avg_retention || 0) * 100) + "%" +
+      (data.stream ? "" : " · 记忆流已关");
+    list.innerHTML = "";
+    if (!data.items || !data.items.length) {
+      list.innerHTML = '<div class="empty">还没记住什么呢。</div>';
+      return;
+    }
+    data.items.forEach((m) => list.appendChild(memEl(m)));
+  } catch (e) {
+    list.innerHTML = '<div class="empty">翻不出来，服务可能没起来。</div>';
+  }
+}
+
+$("btnMem").onclick = openMemories;
+$("btnMemClose").onclick = () => $("memMask").classList.remove("on");
+$("memMask").onclick = (e) => {
+  if (e.target === $("memMask")) $("memMask").classList.remove("on");
+};
+$("btnTidy").onclick = async () => {
+  $("memStat").textContent = "整理中…";
+  try {
+    const res = await fetch("/api/tidy", { method: "POST" });
+    const r = await res.json();
+    addSys("整理好了：忘掉 " + r.forgotten + " 条，记模糊 " + r.fuzzy + " 条，合并 " + r.merged + " 组");
+    openMemories();
+  } catch (e) {
+    $("memStat").textContent = "整理失败";
+  }
+};
+
+// ---- 主动找你说 ----
+async function loadProactive() {
+  try {
+    const res = await fetch("/api/proactive");
+    const d = await res.json();
+    const on = d.state.enabled !== false && d.on;
+    const btn = $("btnAutoTalk");
+    btn.textContent = on ? "🔔 主动开" : "🔕 主动关";
+    btn.classList.toggle("on", on);
+    btn.title = paused ? "鲸鲸暂停中" : (d.why || "");
+  } catch (e) {}
+}
+
+// ---- 暂停 / 继续 ----
+function paintPause(p) {
+  if (!p) return;
+  paused = !!p.paused;
+  const bar = $("pauseBar");
+  if (bar) bar.classList.toggle("on", paused);
+  const btn = $("btnPause");
+  if (btn) {
+    btn.classList.toggle("on", paused);
+    btn.textContent = paused ? "▶ 继续" : "⏸ 暂停";
+    btn.title = paused ? "让鲸鲸继续说话" : "暂停鲸鲸：不回消息、不主动找你";
+  }
+  const since = $("pauseSince");
+  if (since) since.textContent = paused && p.since_text ? "（从 " + p.since_text + " 起）" : "";
+  const ta = $("input");
+  if (ta) {
+    ta.disabled = paused;
+    ta.placeholder = paused ? "鲸鲸暂停中，先点「继续」" : "跟大肥鱼说点什么…";
+  }
+  const send = $("btnSend");
+  if (send) send.disabled = paused;
+  if (paused && currentAudio) {
+    try { currentAudio.pause(); } catch (e) {}
+    currentAudio = null;
+  }
+  ["btnFeed", "btnPet", "btnProactive"].forEach((id) => {
+    const b = $(id);
+    if (b) b.disabled = paused;
+  });
+}
+
+async function loadPause() {
+  try {
+    const res = await fetch("/api/pause", { cache: "no-store" });
+    paintPause(await res.json());
+  } catch (e) {}
+}
+
+async function togglePause() {
+  const next = !paused;
+  try {
+    const res = await fetch("/api/pause", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paused: next }),
+    });
+    const d = await res.json();
+    paintPause(d);
+    addSys(d.paused ? "鲸鲸暂停了：她不会回消息，也不会自己找你" : "鲸鲸回来了，可以说话啦");
+    toast(d.paused ? "已暂停" : "已继续");
+    loadProactive();
+  } catch (e) {
+    toast("没改成：服务没响应", true);
+  }
+}
+
+$("btnPause").onclick = togglePause;
+$("btnResume").onclick = togglePause;
+
+$("btnProactive").onclick = async () => {
+  addSys("问问她这会儿想不想说点什么…");
+  try {
+    const res = await fetch("/api/proactive/send", { method: "POST" });
+    const d = await res.json();
+    if (d.sent) {
+      addBubble(d.text, "fish");
+      speak(d.text);
+      if (d.id) lastId = Math.max(lastId, d.id);
+    } else {
+      addSys("她没说：" + d.reason);
+    }
+    loadProactive();
+  } catch (e) {
+    addSys("叫不动她，服务可能没起来。");
+  }
+};
+
+$("btnAutoTalk").onclick = async () => {
+  const on = !$("btnAutoTalk").classList.contains("on");
+  await fetch("/api/proactive/toggle", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ on }),
+  });
+  addSys(on ? "好，她可以自己找你了" : "好，她不主动了");
+  loadProactive();
+};
+
+// ---- 她自己冒出来说话：网页这边靠轮询接 ----
+async function poll() {
+  if (busy || !lastId) return;
+  try {
+    const res = await fetch(`/api/poll?after=${lastId}`);
+    const d = await res.json();
+    if (d.paused !== undefined) paintPause({ paused: d.paused, since_text: d.since_text });
+    if (!d.messages || !d.messages.length) return;
+    const said = [];
+    for (const m of d.messages) {
+      if (m.role === "user") {
+        addBubble(m.content, "me");
+        continue;
+      }
+      // 她可能一口气说了两三条，一条一条冒出来
+      const lines = m.content.split("\n").map((s) => s.trim()).filter(Boolean);
+      for (let i = 0; i < lines.length; i++) {
+        if (i) await sleep(500 + Math.random() * 700);
+        addBubble(lines[i], "fish");
+      }
+      said.push(m.content);
+    }
+    lastId = d.last_id || lastId;
+    setBars(d.state);
+    if (said.length) speak(said.join(" "));
+  } catch (e) {}
+}
+/* ================= 设置面板 ================= */
+let setData = null;
+let setDraft = {};
+let setDirty = false;
+let setTab = "overview";
+let showAdv = false;
+let persona = null;
+let setBusy = false;
+
+function toast(msg, bad) {
+  const t = $("toast");
+  if (!t) return;
+  t.textContent = msg;
+  t.className = "toast on" + (bad ? " bad" : "");
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => { t.className = "toast" + (bad ? " bad" : ""); }, 3400);
+}
+
+function setVal(env, v) {
+  setDraft[env] = v;
+  setDirty = true;
+  updateHead();
+}
+
+function markDirty() {
+  setDirty = true;
+  updateHead();
+}
+
+function updateHead() {
+  const dirty = setDirty || (persona && persona.dirty);
+  let text = setDirty ? "● 有改动没保存" : "改完点保存，直接写进 .env";
+  if (setTab === "persona") {
+    text = persona
+      ? (persona.dirty ? "● 这份人格有改动没保存" : "改完点下面的「保存这份人格」")
+      : "正在读人格…";
+    if (setDirty) text += " · 另外还有设置没保存";
+  }
+  const st = $("setState");
+  st.textContent = text;
+  st.className = "state" + (dirty ? " dirty" : "");
+  $("setSave").disabled = !setDirty || setBusy;
+}
+
+async function openSettings(tab) {
+  $("setMask").classList.add("on");
+  applyFull(localStorage.getItem("fishSetFull") === "1");
+  if (tab) setTab = tab;
+  if (setData) {
+    renderSettings();
+    return;
+  }
+  $("setForm").innerHTML = '<div class="empty">正在打开抽屉…</div>';
+  try {
+    const res = await fetch("/api/settings", { cache: "no-store" });
+    setData = await res.json();
+    setDraft = { ...setData.values };
+    setDirty = false;
+    if (!(setData.groups || []).some((g) => g.id === setTab)) setTab = "overview";
+    renderSettings();
+  } catch (e) {
+    $("setForm").innerHTML = '<div class="empty">读不到设置：服务可能没起来。</div>';
+  }
+}
+
+function applyFull(on) {
+  $("setMask").classList.toggle("full", on);
+  $("setWide").textContent = on ? "⤡" : "⤢";
+  $("setWide").title = on ? "退出铺满" : "铺满屏幕（多显示一些）";
+  try { localStorage.setItem("fishSetFull", on ? "1" : "0"); } catch (e) {}
+}
+
+function closeSettings() {
+  if (setDirty || (setTab === "persona" && persona && persona.dirty)) {
+    if (!confirm("还有改动没保存，直接关掉？")) return;
+  }
+  $("setMask").classList.remove("on");
+  napStop();
+}
+
+function renderTabs() {
+  const nav = $("setTabs");
+  nav.innerHTML = "";
+  (setData.groups || []).forEach((g) => {
+    const b = document.createElement("button");
+    b.className = "set-tab" + (g.id === setTab ? " on" : "");
+    b.textContent = g.icon + " " + g.title;
+    b.onclick = () => {
+      if (g.id === setTab) return;
+      setTab = g.id;
+      renderSettings(true);
+    };
+    nav.appendChild(b);
+  });
+}
+
+function renderSettings(resetScroll) {
+  if (!setData) return;
+  napStop();
+  sisStop();
+  renderTabs();
+  const box = $("setForm");
+  const keep = resetScroll ? 0 : box.scrollTop;
+  box.innerHTML = "";
+
+  if (setTab === "persona") {
+    if (!persona) {
+      box.innerHTML = '<div class="empty">正在读人格…</div>';
+      loadPersona();
+    } else {
+      renderPersonaTab();
+    }
+    updateHead();
+    return;
+  }
+
+  if (setTab === "overview") box.appendChild(statusCards());
+
+  const g = (setData.groups || []).find((x) => x.id === setTab);
+  if (g) {
+    const card = document.createElement("div");
+    card.className = "card";
+    const h = document.createElement("h3");
+    h.textContent = g.icon + " " + g.title;
+    const sub = document.createElement("div");
+    sub.className = "sub";
+    sub.textContent = g.desc;
+    card.append(h, sub);
+    if (g.presets && g.presets.length) card.appendChild(presetRow(g.presets));
+    if (g.id === "voice") card.appendChild(ttsPreviewRow());
+    if (g.id === "qq") {
+      card.appendChild(napcatPanel());
+      card.appendChild(qqHelp());
+    }
+    if (g.id === "sister") card.appendChild(sisterPanel());
+    const fields = document.createElement("div");
+    fields.className = "fields";
+    g.fields.filter((f) => showAdv || !f.advanced)
+      .forEach((f) => fields.appendChild(fieldEl(f)));
+    card.appendChild(fields);
+    box.appendChild(card);
+    if (g.id === "qq") napStartPoll();
+    if (g.id === "sister") sisStartPoll();
+
+    const advCount = g.fields.filter((f) => f.advanced).length;
+    if (advCount) {
+      const adv = document.createElement("div");
+      adv.className = "adv";
+      const b = document.createElement("button");
+      b.className = "chip";
+      b.textContent = showAdv ? "收起高级选项" : "显示高级选项（" + advCount + "）";
+      b.onclick = () => { showAdv = !showAdv; renderSettings(); };
+      adv.appendChild(b);
+      box.appendChild(adv);
+    }
+  }
+  box.scrollTop = keep;
+  updateHead();
+}
+
+function cardEl(icon, title, text) {
+  const c = document.createElement("div");
+  c.className = "card";
+  const k = document.createElement("div");
+  k.className = "k";
+  k.textContent = icon + " " + title;
+  const v = document.createElement("div");
+  v.className = "v";
+  v.textContent = text;
+  c.append(k, v);
+  return c;
+}
+
+function miniBtn(label, fn) {
+  const b = document.createElement("button");
+  b.className = "mini";
+  b.textContent = label;
+  b.onclick = fn;
+  return b;
+}
+
+function statusCards() {
+  const s = setData.status || {};
+  const wrap = document.createElement("div");
+  wrap.className = "cards";
+
+  const brain = cardEl("🧠", "现在的脑子", (s.brain || {}).label || "未知");
+  brain.appendChild(miniBtn("测试一下", testModel));
+  wrap.appendChild(brain);
+
+  const tts = cardEl("🔊", "语音", (s.tts || {}).label || "未知");
+  wrap.appendChild(tts);
+
+  const mem = s.memory || {};
+  wrap.appendChild(cardEl("🧠", "记忆",
+    (mem.count || 0) + " 条 · " + (mem.stream ? "会忘的那种" : "只留摘要") +
+    " · 库 " + (mem.db_kb || 0) + " KB"));
+
+  const qq = s.qq || {};
+  const nap = s.napcat || {};
+  let qqText;
+  if (nap.online) {
+    qqText = "已登录 " + (nap.nickname || "") + (nap.uin ? "（" + nap.uin + "）" : "");
+  } else if (nap.onebot) {
+    qqText = "NapCat 在，但还没登录";
+  } else if (nap.found) {
+    qqText = "NapCat 没在跑";
+  } else {
+    qqText = "没找到 NapCat";
+  }
+  const qqCard = cardEl("💬", "QQ", qqText);
+  const canStart = !nap.online && !nap.onebot && !nap.running && !nap.starting;
+  qqCard.appendChild(miniBtn(canStart ? "⚡ 启动 NapCat" : "打开 QQ 设置", () => {
+    setTab = "qq";
+    renderSettings(true);
+    if (canStart) setTimeout(napStartNow, 250);
+  }));
+  if (nap.online) qqCard.appendChild(miniBtn("测试连接", testQQ));
+  wrap.appendChild(qqCard);
+
+  const srv = s.server || {};
+  wrap.appendChild(cardEl("🖥️", "服务",
+    (srv.url || "") + " · 已跑 " + Math.floor((srv.uptime_s || 0) / 60) + " 分钟"));
+
+  return wrap;
+}
+
+async function testModel() {
+  toast("正在问模型……");
+  try {
+    const res = await fetch("/api/settings/test-model", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(setDraft),
+    });
+    const d = await res.json();
+    if (d.ok) {
+      toast("通了：" + (d.model || "") + " · " + (d.ms || 0) + "ms · 它说「" + (d.reply || "…") + "」");
+    } else {
+      toast("没通：" + (d.detail || (d.notes || []).join("；") || "看看地址和 Key"), true);
+    }
+  } catch (e) {
+    toast("测试失败：服务没响应", true);
+  }
+}
+
+async function testQQ() {
+  toast("去敲 NapCat 的门……");
+  try {
+    const res = await fetch("/api/settings/test-qq", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ QQ_API: setDraft.QQ_API, QQ_TOKEN: setDraft.QQ_TOKEN }),
+    });
+    const d = await res.json();
+    if (d.ok && d.uin) {
+      toast("连上了：" + (d.nickname || "") + "（" + d.uin + "）" +
+            (d.online === false ? " · 但显示离线" : "") + " · " + (d.ms || 0) + "ms");
+    } else {
+      toast(d.detail || "没连上：NapCat 开了吗？", true);
+    }
+  } catch (e) {
+    toast("测试失败：服务没响应", true);
+  }
+}
+
+function presetRow(presets) {
+  const box = document.createElement("div");
+  box.className = "presets";
+  presets.forEach((p) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = p.label;
+    b.onclick = () => {
+      Object.entries(p.env).forEach(([k, v]) => { setDraft[k] = v; });
+      markDirty();
+      renderSettings();
+      toast("已填入 " + p.label + "，把 Key 填上再点「测试一下」");
+    };
+    box.appendChild(b);
+  });
+  return box;
+}
+
+function qqHelp() {
+  const box = document.createElement("div");
+  box.className = "qhelp";
+  const text = document.createElement("div");
+  const url = ((setData.status || {}).qq || {}).report_url || location.origin + "/api/qq";
+  text.innerHTML = "NapCat 里要做两件事：开 <b>HTTP 服务端</b>（端口和上面一致）；" +
+    "开 <b>HTTP 事件上报</b>（反向 POST），地址填 <code></code>";
+  text.querySelector("code").textContent = url;
+  const copy = document.createElement("button");
+  copy.className = "chip";
+  copy.textContent = "复制上报地址";
+  copy.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast("复制好了，粘到 NapCat 的事件上报地址里");
+    } catch (e) {
+      toast("浏览器不给复制，手动抄一下：" + url, true);
+    }
+  };
+  box.append(text, copy);
+  return box;
+}
+
+/* ---- NapCat：一键启动 + 扫码 ---- */
+let napTimer = null;
+let napStatus = null;
+let napStarting = false;
+
+function napStop() {
+  if (napTimer) { clearInterval(napTimer); napTimer = null; }
+}
+
+function napcatPanel() {
+  const box = document.createElement("div");
+  box.className = "nap";
+  box.innerHTML =
+    '<div class="nap-top">' +
+      '<i class="dot off" id="napDot"></i><b>NapCat</b>' +
+      '<span class="nap-state" id="napState">检测中…</span>' +
+      '<span class="nap-actions">' +
+        '<button class="chip on" id="napStart">⚡ 启动 NapCat</button>' +
+        '<button class="chip" id="napRefresh">刷新</button>' +
+        '<button class="chip" id="napWebui">网页面板</button>' +
+      '</span>' +
+    '</div>' +
+    '<div class="nap-hint" id="napHint"></div>' +
+    '<div class="nap-qr" id="napQR"></div>';
+  box.querySelector("#napStart").onclick = napStartNow;
+  box.querySelector("#napRefresh").onclick = () => { napPoll(); toast("看一眼 NapCat 现在怎么样…"); };
+  box.querySelector("#napWebui").onclick = () => {
+    const st = napStatus || {};
+    if (st.webui && st.webui_up) {
+      window.open(st.webui, "_blank", "noopener");
+    } else {
+      toast("NapCat 的网页面板还没开：它得先连上 QQ（6099 才会起来）。" +
+        (st.running ? "现在 QQ 在跑，多半是停在登录界面，先去 QQ 窗口扫码/登录。" : ""), true);
+    }
+  };
+  return box;
+}
+
+async function napPoll() {
+  if (!$("napState")) { napStop(); return; }
+  try {
+    const res = await fetch("/api/napcat/status", { cache: "no-store" });
+    napStatus = await res.json();
+  } catch (e) {
+    return;
+  }
+  napPaint();
+}
+
+function napPaint() {
+  const st = napStatus;
+  const stateEl = $("napState");
+  if (!st || !stateEl) return;
+  const hintEl = $("napHint"), qrEl = $("napQR"), dot = $("napDot");
+  let text, hint, on = false;
+
+  if (!st.found) {
+    text = "没找到 NapCat";
+    hint = "到下面「高级选项 → NapCat 目录」填上路径（比如 D:\\NapCat），再回来点启动。";
+  } else if (st.online) {
+    text = "已登录 " + (st.nickname || "") + (st.uin ? "（" + st.uin + "）" : "");
+    hint = "OneBot 在 " + ((setDraft && setDraft.QQ_API) || "127.0.0.1:3000") +
+      " 上等着了，QQ 那边能收发了。";
+    on = true;
+  } else if (st.onebot) {
+    text = "在跑，但还没登录";
+    hint = "用手机 QQ 扫下面的码；扫完这里会自己变成「已登录」。";
+  } else if (st.running || st.starting) {
+    text = st.running ? "QQ 起来了，等 3000 端口…" : "正在启动（UAC 弹窗点「是」）…";
+    hint = "QQ 在跑但 OneBot 还没起来：如果 QQ 停在登录界面，就去那个窗口扫码/登录；" +
+      "管理员窗口也别关——关掉 NapCat 就跟着退了。";
+  } else {
+    text = "没在跑";
+    hint = "点「启动 NapCat」会先关掉本机 QQ 再注入（机器人小号没关系）；弹 UAC 时点「是」。";
+  }
+
+  stateEl.textContent = text;
+  hintEl.textContent = hint;
+  dot.className = "dot" + (on ? "" : " off");
+
+  const qr = st.qrcode || {};
+  if (st.show_qr && qr.has) {
+    const src = "/api/napcat/qrcode?t=" + qr.mtime;
+    if (qrEl.dataset.src !== src) {
+      qrEl.dataset.src = src;
+      qrEl.innerHTML = '<img alt="QQ 登录二维码" src="' + src + '">' +
+        '<div class="nap-qr-tip">手机 QQ 扫一下<br><small>过期了点「刷新」</small></div>';
+    }
+  } else if (qrEl.dataset.src) {
+    qrEl.dataset.src = "";
+    qrEl.innerHTML = "";
+  }
+
+  const btn = $("napStart");
+  if (btn) {
+    btn.disabled = !st.found;
+    btn.textContent = st.online ? "↻ 重启 NapCat" : "⚡ 启动 NapCat";
+  }
+}
+
+async function napStartNow() {
+  if (napStarting) return;
+  if (napStatus && napStatus.online) {
+    if (!confirm("现在 QQ 已经登着了。重启会先关掉本机 QQ，再重新注入一遍（可能要重新扫码）。继续？")) return;
+  }
+  napStarting = true;
+  const btn = $("napStart");
+  if (btn) { btn.disabled = true; btn.textContent = "启动中…"; }
+  try {
+    const res = await fetch("/api/napcat/start", { method: "POST" });
+    const d = await res.json();
+    toast(d.detail || (d.ok ? "已经去拉 NapCat 了" : "没启动起来"), !d.ok);
+  } catch (e) {
+    toast("启动失败：服务没响应", true);
+  } finally {
+    napStarting = false;
+    napPoll();
+    setTimeout(napPoll, 3000);
+    setTimeout(napPoll, 9000);
+  }
+}
+
+function napStartPoll() {
+  napStop();
+  napPoll();
+  napTimer = setInterval(napPoll, 2500);
+}
+
+/* ---- 妹妹（鱼丸） ---- */
+let sisTimer = null, sisStatus = null, sisRows = null;
+let snapStatus = null, snapStarting = false;
+
+function sisStop() {
+  if (sisTimer) { clearInterval(sisTimer); sisTimer = null; }
+}
+
+function sisterPanel() {
+  const box = document.createElement("div");
+  box.className = "sis";
+  box.innerHTML =
+    '<div class="sis-top">' +
+      '<i class="dot off" id="sisDot"></i><b>鱼丸</b>' +
+      '<span class="sis-state" id="sisState">看看她在不在…</span>' +
+      '<span class="sis-actions">' +
+        '<button class="chip on" id="sisStart">▶ 启动妹妹</button>' +
+        '<button class="chip" id="sisStopBtn">■ 停止</button>' +
+        '<button class="chip" id="sisOpen">💬 让鲸鲸找她</button>' +
+        '<button class="chip" id="sisPage">她的面板</button>' +
+        '<button class="chip" id="sisReset">这一轮重来</button>' +
+      '</span>' +
+    '</div>' +
+    '<div class="sis-hint" id="sisHint"></div>' +
+    '<div class="nap sis-nap">' +
+      '<div class="nap-top">' +
+        '<i class="dot off" id="snapDot"></i><b>鱼丸的 NapCat</b>' +
+        '<span class="nap-state" id="snapState">看看第二份在不在…</span>' +
+        '<span class="nap-actions">' +
+          '<button class="chip on" id="snapStart">⚡ 启动她的 NapCat</button>' +
+          '<button class="chip" id="snapRefresh">刷新</button>' +
+          '<button class="chip" id="snapWebui">她的 NapCat 面板</button>' +
+        '</span>' +
+      '</div>' +
+      '<div class="nap-hint" id="snapHint"></div>' +
+      '<div class="nap-qr" id="snapQR"></div>' +
+    '</div>' +
+    '<div class="sis-chat" id="sisChat"></div>';
+  box.querySelector("#sisStart").onclick = sisStartNow;
+  box.querySelector("#sisStopBtn").onclick = sisStopNow;
+  box.querySelector("#sisOpen").onclick = sisOpenNow;
+  box.querySelector("#sisPage").onclick = () => {
+    const url = (sisStatus || {}).url;
+    if (url) window.open(url, "_blank", "noopener");
+    else toast("妹妹还没起来，面板也还没有", true);
+  };
+  box.querySelector("#sisReset").onclick = sisResetNow;
+  box.querySelector("#snapStart").onclick = snapStartNow;
+  box.querySelector("#snapRefresh").onclick = () => { snapPoll(); toast("看一眼第二份 NapCat…"); };
+  box.querySelector("#snapWebui").onclick = () => {
+    const st = snapStatus || {};
+    if (st.webui && st.webui_up) {
+      window.open(st.webui, "_blank", "noopener");
+    } else {
+      toast("她的 NapCat 面板（6100）还没开：要等第二份 NapCat 把 QQ 拉起来。" +
+        (st.running ? "现在多半是停在登录界面，去那个 QQ 窗口登鱼丸的号。" : ""), true);
+    }
+  };
+  return box;
+}
+
+async function sisPoll() {
+  if (!$("sisState")) { sisStop(); return; }
+  try {
+    const [a, b, c] = await Promise.all([
+      fetch("/api/sister", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/sister/chat?limit=16", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/sister/napcat/status", { cache: "no-store" }).then((r) => r.json()),
+    ]);
+    sisStatus = a;
+    sisRows = b;
+    snapStatus = c;
+    sisPaint();
+    snapPaint();
+  } catch (e) {}
+}
+
+function sisPaint() {
+  const st = sisStatus;
+  const stateEl = $("sisState");
+  if (!st || !stateEl) return;
+  const hintEl = $("sisHint"), chatEl = $("sisChat"), dot = $("sisDot");
+  const p = st.peer || {};
+  let text, hint, on = false;
+
+  if (!st.enabled) {
+    text = "还没打开";
+    hint = "先把上面「养个妹妹」打开、填好她的 QQ 和 NapCat 端口——填完点保存，再回来启动她。";
+  } else if (!st.running) {
+    text = "没在跑";
+    hint = "点「启动妹妹」：她会用 sister/ 那份数据再起一个进程（端口 " + (st.url || "") + "）。";
+  } else if (!st.uin) {
+    text = "服务在跑，QQ 还没登录";
+    hint = "去妹妹自己的 NapCat 扫码（她的 3001 端口和 " + (st.url || "") + " 都要开着），登完这里会自己变。";
+  } else {
+    text = "在线 " + (st.nickname || "") + "（" + st.uin + "）";
+    on = true;
+    const mins = p.last_in_ago_min;
+    const when = (mins === null || mins === undefined) ? "还没聊过"
+      : (mins < 1 ? "刚刚还在聊" : mins < 60 ? mins + " 分钟前说过话"
+      : Math.floor(mins / 60) + " 小时前说过话");
+    hint = when + " · 这一轮 " + (p.burst_used || 0) + "/" + (p.max || 6) + " 句" +
+      " · 今天 " + (p.day_used || 0) + "/" + (p.day_max || 0) + " 句" +
+      (p.muted_for_min ? " · 歇 " + p.muted_for_min + " 分钟" : "") +
+      (p.open_on ? " · 鲸鲸会主动找她" : " · 妹妹只回不缠人");
+  }
+
+  stateEl.textContent = text;
+  hintEl.textContent = hint;
+  dot.className = "dot" + (on ? "" : " off");
+
+  const startBtn = $("sisStart"), stopBtn = $("sisStopBtn");
+  if (startBtn) startBtn.disabled = !st.enabled || st.running;
+  if (stopBtn) stopBtn.disabled = !st.running;
+
+  if (chatEl && sisRows && sisRows.messages) {
+    chatEl.innerHTML = "";
+    sisRows.messages.forEach((m) => {
+      const line = document.createElement("div");
+      const mine = m.role !== "user";
+      line.className = "sis-line" + (mine ? " sis-say" : "");
+      const who = document.createElement("span");
+      who.className = "who";
+      who.textContent = mine ? "鲸鲸" : "鱼丸";
+      const msg = document.createElement("span");
+      msg.className = "msg";
+      msg.textContent = m.content;
+      line.append(who, msg);
+      chatEl.appendChild(line);
+    });
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+}
+
+async function sisStartNow() {
+  const btn = $("sisStart");
+  if (btn) { btn.disabled = true; btn.textContent = "启动中…"; }
+  try {
+    const d = await (await fetch("/api/sister/start", { method: "POST" })).json();
+    toast(d.detail || (d.ok ? "妹妹醒了" : "没启动起来"), !d.ok);
+  } catch (e) {
+    toast("启动失败：服务没响应", true);
+  } finally {
+    if (btn) btn.textContent = "▶ 启动妹妹";
+    sisPoll();
+    setTimeout(sisPoll, 4000);
+    setTimeout(sisPoll, 10000);
+  }
+}
+
+async function sisStopNow() {
+  try {
+    const d = await (await fetch("/api/sister/stop", { method: "POST" })).json();
+    toast(d.detail || (d.ok ? "妹妹睡了" : "没停下来"), !d.ok);
+  } catch (e) {
+    toast("停止失败：服务没响应", true);
+  }
+  sisPoll();
+}
+
+async function sisOpenNow() {
+  toast("让鲸鲸想想说什么……");
+  try {
+    const d = await (await fetch("/api/sister/open", { method: "POST" })).json();
+    if (d.sent) toast("鲸鲸找她了：「" + (d.text || "") + "」");
+    else toast(d.reason || "这次没发出去", true);
+  } catch (e) {
+    toast("没发出去：服务没响应", true);
+  }
+  sisPoll();
+}
+
+async function sisResetNow() {
+  try {
+    await fetch("/api/sister/reset", { method: "POST" });
+    toast("这一轮的额度清零了");
+  } catch (e) {}
+  sisPoll();
+}
+
+/* ---- 鱼丸的 NapCat（第二份，3001） ---- */
+async function snapPoll() {
+  if (!$("snapState")) return;
+  try {
+    snapStatus = await (await fetch("/api/sister/napcat/status", { cache: "no-store" })).json();
+    snapPaint();
+  } catch (e) {}
+}
+
+function snapPaint() {
+  const st = snapStatus;
+  const stateEl = $("snapState");
+  if (!st || !stateEl) return;
+  const hintEl = $("snapHint"), qrEl = $("snapQR"), dot = $("snapDot");
+  let text, hint, on = false;
+
+  if (!st.found) {
+    text = "没找到第二份 NapCat";
+    hint = "设置 → 🐠 妹妹 →「妹妹的 NapCat 目录」填 D:\\NapCat2。" +
+      "别填鲸鲸那份（D:\\NapCat）：那个目录的启动脚本会先关掉本机所有 QQ。";
+  } else if (st.online) {
+    text = "已登录 " + (st.nickname || "鱼丸") + (st.uin ? "（" + st.uin + "）" : "");
+    hint = "她的 OneBot 在 " + (st.api || "127.0.0.1:3001") + " 上等着了，鲸鲸能跟她说话。";
+    on = true;
+  } else if (st.onebot) {
+    text = "在跑，但还没登录";
+    hint = "用手机 QQ 扫下面的码；或者去那个新开的 QQ 窗口里点「登录」登鱼丸的号。";
+  } else if (st.starting || st.running) {
+    text = st.starting ? "正在启动（UAC 弹窗点「是」）…" : "NapCat 起来了，等 3001 端口…";
+    hint = "会弹出一个新的 QQ 登录窗口：用手机登鱼丸那个号。" +
+      "这一步不关鲸鲸的 QQ；那个管理员窗口别关，关了第二份 NapCat 就退了。";
+  } else {
+    text = "没在跑";
+    hint = "点「启动她的 NapCat」→ UAC 点「是」→ 在新开的 QQ 窗口登鱼丸的号。" +
+      "用的是 D:\\NapCat2 的脚本，不会把鲸鲸踢下线。";
+  }
+
+  stateEl.textContent = text;
+  hintEl.textContent = hint;
+  dot.className = "dot" + (on ? "" : " off");
+
+  const qr = st.qrcode || {};
+  if (st.show_qr && qr.has) {
+    const src = "/api/sister/napcat/qrcode?t=" + qr.mtime;
+    if (qrEl.dataset.src !== src) {
+      qrEl.dataset.src = src;
+      qrEl.innerHTML = '<img alt="鱼丸的 QQ 登录二维码" src="' + src + '">' +
+        '<div class="nap-qr-tip">手机 QQ 扫一下（登鱼丸的号）<br><small>过期了点「刷新」</small></div>';
+    }
+  } else if (qrEl.dataset.src) {
+    qrEl.dataset.src = "";
+    qrEl.innerHTML = "";
+  }
+
+  const btn = $("snapStart");
+  if (btn) {
+    btn.disabled = !st.found || st.starting || snapStarting;
+    btn.textContent = st.online ? "↻ 重启她的 NapCat" : "⚡ 启动她的 NapCat";
+  }
+}
+
+async function snapStartNow() {
+  if (snapStarting) return;
+  if (snapStatus && snapStatus.online) {
+    if (!confirm("鱼丸的 NapCat 已经登着了。重启会关掉她那个 QQ（不会影响鲸鲸），可能要重新扫码。继续？")) return;
+  }
+  snapStarting = true;
+  const btn = $("snapStart");
+  if (btn) { btn.disabled = true; btn.textContent = "启动中…"; }
+  try {
+    const d = await (await fetch("/api/sister/napcat/start", { method: "POST" })).json();
+    toast(d.detail || (d.ok ? "已经去拉第二份 NapCat 了" : "没启动起来"), !d.ok);
+  } catch (e) {
+    toast("启动失败：服务没响应", true);
+  } finally {
+    snapStarting = false;
+    snapPoll();
+    setTimeout(snapPoll, 3000);
+    setTimeout(snapPoll, 9000);
+  }
+}
+
+function sisStartPoll() {
+  sisStop();
+  sisPoll();
+  sisTimer = setInterval(sisPoll, 4000);
+}
+
+
+function ttsPreviewRow() {
+  const wrap = document.createElement("div");
+  wrap.className = "preview";
+  const inp = document.createElement("input");
+  inp.className = "in txt";
+  inp.value = "咕噜咕噜，我是大肥鱼";
+  const btn = document.createElement("button");
+  btn.className = "chip on";
+  btn.textContent = "▶ 试听";
+  const out = document.createElement("span");
+  out.className = "pv";
+  btn.onclick = async () => {
+    btn.disabled = true;
+    btn.textContent = "合成中…";
+    try {
+      const res = await fetch("/api/settings/tts-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: inp.value, overrides: setDraft }),
+      });
+      const type = res.headers.get("content-type") || "";
+      if (!res.ok || !type.startsWith("audio/")) {
+        const d = await res.json().catch(() => ({}));
+        toast(d.error || "没合成出来", true);
+        return;
+      }
+      const engine = res.headers.get("X-TTS-Engine") || "";
+      const blob = await res.blob();
+      new Audio(URL.createObjectURL(blob)).play().catch(() => {});
+      out.textContent = engine ? "引擎：" + engine : "";
+    } catch (e) {
+      toast("试听失败", true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "▶ 试听";
+    }
+  };
+  wrap.append(inp, btn, out);
+  return wrap;
+}
+
+function fieldEl(f) {
+  const row = document.createElement("div");
+  row.className = "fld" + (f.kind === "textarea" ? " wide" : "");
+  const txt = document.createElement("div");
+  txt.className = "fbody";
+  const lab = document.createElement("div");
+  lab.className = "lab";
+  lab.textContent = f.label;
+  if (f.restart) {
+    const b = document.createElement("span");
+    b.className = "badge";
+    b.textContent = "重启";
+    lab.appendChild(b);
+  }
+  txt.appendChild(lab);
+  if (f.help) {
+    const h = document.createElement("div");
+    h.className = "hint";
+    h.textContent = f.help;
+    txt.appendChild(h);
+  }
+  const ctl = document.createElement("div");
+  ctl.className = "ctl";
+  ctl.appendChild(controlEl(f));
+  row.append(txt, ctl);
+  return row;
+}
+
+function controlEl(f) {
+  const val = setDraft[f.env];
+
+  if (f.kind === "bool") {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "sw" + (val ? " on" : "");
+    b.setAttribute("role", "switch");
+    b.setAttribute("aria-checked", val ? "true" : "false");
+    b.innerHTML = "<i></i>";
+    b.onclick = () => {
+      setVal(f.env, !setDraft[f.env]);
+      b.classList.toggle("on", !!setDraft[f.env]);
+      b.setAttribute("aria-checked", setDraft[f.env] ? "true" : "false");
+    };
+    return b;
+  }
+
+  if (f.kind === "select") {
+    const s = document.createElement("select");
+    s.className = "in sel";
+    const opts = (f.options || []).map((o) => ({ value: o.value, label: o.label }));
+    const cur = val === undefined || val === null ? "" : String(val);
+    if (cur && !opts.some((o) => o.value === cur)) {
+      opts.unshift({ value: cur, label: "当前：" + cur });
+    }
+    opts.forEach((o) => {
+      const op = document.createElement("option");
+      op.value = o.value;
+      op.textContent = o.label;
+      s.appendChild(op);
+    });
+    s.value = cur;
+    s.onchange = () => setVal(f.env, s.value);
+    return s;
+  }
+
+  if (f.kind === "slider") {
+    const box = document.createElement("div");
+    box.className = "slider";
+    const r = document.createElement("input");
+    r.type = "range";
+    r.min = f.min !== null && f.min !== undefined ? f.min : 0;
+    r.max = f.max !== null && f.max !== undefined ? f.max : 100;
+    r.step = f.step || 1;
+    const num = Number(val);
+    r.value = Number.isFinite(num) ? num : r.min;
+    const out = document.createElement("b");
+    const fmt = (x) => (Number(x) >= 100 ? String(Number(x)) : String(Math.round(Number(x) * 100) / 100));
+    out.textContent = fmt(r.value);
+    r.oninput = () => {
+      setVal(f.env, Number(r.value));
+      out.textContent = fmt(r.value);
+    };
+    box.append(r, out);
+    return box;
+  }
+
+  if (f.kind === "number") {
+    const i = document.createElement("input");
+    i.type = "number";
+    i.className = "in num";
+    if (f.min !== null && f.min !== undefined) i.min = f.min;
+    if (f.max !== null && f.max !== undefined) i.max = f.max;
+    i.step = f.step || 1;
+    i.value = val === undefined || val === null ? "" : val;
+    i.oninput = () => setVal(f.env, i.value === "" ? "" : Number(i.value));
+    return i;
+  }
+
+  if (f.kind === "textarea") {
+    const t = document.createElement("textarea");
+    t.className = "in ta";
+    t.rows = 3;
+    if (f.placeholder) t.placeholder = f.placeholder;
+    t.value = val === undefined || val === null ? "" : val;
+    t.oninput = () => setVal(f.env, t.value);
+    return t;
+  }
+
+  if (f.kind === "time") {
+    const i = document.createElement("input");
+    i.type = "time";
+    i.className = "in num";
+    i.style.width = "110px";
+    i.value = val || "";
+    i.oninput = () => setVal(f.env, i.value);
+    return i;
+  }
+
+  if (f.kind === "secret") {
+    const box = document.createElement("div");
+    box.className = "eye";
+    const i = document.createElement("input");
+    i.type = "password";
+    i.className = "in sec";
+    i.autocomplete = "off";
+    if (f.placeholder) i.placeholder = f.placeholder;
+    i.value = val === undefined || val === null ? "" : val;
+    i.oninput = () => setVal(f.env, i.value);
+    const e = document.createElement("button");
+    e.type = "button";
+    e.className = "eye-btn";
+    e.textContent = "👁";
+    e.title = "看 / 藏";
+    e.onclick = () => { i.type = i.type === "password" ? "text" : "password"; };
+    box.append(i, e);
+    return box;
+  }
+
+  const i = document.createElement("input");
+  i.type = "text";
+  i.className = "in txt";
+  if (f.placeholder) i.placeholder = f.placeholder;
+  i.value = val === undefined || val === null ? "" : val;
+  i.oninput = () => setVal(f.env, i.value);
+  return i;
+}
+
+async function saveSettings() {
+  if (!setDirty || setBusy) return;
+  setBusy = true;
+  updateHead();
+  try {
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: setDraft }),
+    });
+    const d = await res.json();
+    if (!res.ok) {
+      toast(d.error || ("保存失败（" + res.status + "）"), true);
+      return;
+    }
+    setData.values = d.values;
+    setData.status = d.status;
+    setDraft = { ...d.values };
+    setDirty = false;
+    renderSettings();
+    if (d.restart && d.restart.length) {
+      toast("保存好了；" + d.restart_labels.join("、") + " 要重启大肥鱼才生效");
+    } else {
+      toast("保存好了，立刻生效");
+    }
+  } catch (e) {
+    toast("保存失败：服务没响应", true);
+  } finally {
+    setBusy = false;
+    updateHead();
+  }
+}
+
+/* ---- 人格 ---- */
+async function loadPersona(file) {
+  $("setForm").innerHTML = '<div class="empty">正在读人格…</div>';
+  try {
+    const res = await fetch("/api/persona" + (file ? "?file=" + encodeURIComponent(file) : ""),
+      { cache: "no-store" });
+    const d = await res.json();
+    if (!res.ok) {
+      toast(d.error || "读不到人格文件", true);
+      return;
+    }
+    persona = { file: d.file, text: d.text, files: d.files || [],
+                self: d.self || null, dirty: false };
+    renderPersonaTab();
+  } catch (e) {
+    toast("读不到人格文件", true);
+  }
+}
+
+function renderPersonaTab() {
+  const box = $("setForm");
+  box.innerHTML = "";
+  if (!persona) return;
+
+  const bar = document.createElement("div");
+  bar.className = "pbar";
+  (persona.files || []).forEach((pf) => {
+    const b = document.createElement("button");
+    b.className = "pfile" + (pf.file === persona.file ? " on" : "");
+    b.textContent = pf.label + (pf.is_default ? " · 默认" : "");
+    b.title = pf.file;
+    b.onclick = () => {
+      if (pf.file === persona.file) return;
+      if (persona.dirty && !confirm("换文件会丢掉没保存的改动，继续？")) return;
+      loadPersona(pf.file);
+    };
+    bar.appendChild(b);
+  });
+  box.appendChild(bar);
+
+  const cur = (persona.files || []).find((x) => x.file === persona.file) || {};
+  const meta = document.createElement("div");
+  meta.className = "pmeta";
+  meta.textContent = persona.file +
+    (cur.size ? "　·　" + cur.size + " 字符" : "") +
+    (cur.mtime ? "　·　改于 " + cur.mtime : "") +
+    ((cur.sessions || []).length ? "　·　用在这些会话：" + cur.sessions.join("、") : "　·　没有会话指向它");
+  box.appendChild(meta);
+
+  const ta = document.createElement("textarea");
+  ta.className = "editor";
+  ta.spellcheck = false;
+  ta.value = persona.text;
+  ta.oninput = () => { persona.text = ta.value; persona.dirty = true; updateHead(); };
+  box.appendChild(ta);
+
+  const row = document.createElement("div");
+  row.className = "pactions";
+  const save = document.createElement("button");
+  save.className = "chip on";
+  save.textContent = "保存这份人格";
+  save.onclick = savePersona;
+  const revert = document.createElement("button");
+  revert.className = "chip";
+  revert.textContent = "还原成上次保存的";
+  revert.onclick = () => {
+    if (persona.dirty && !confirm("丢掉这次的改动？")) return;
+    loadPersona(persona.file);
+  };
+  const note = document.createElement("span");
+  note.className = "pmeta";
+  note.textContent = "保存时留一份备份在 data/persona-backup/；下一句话就按新的来。";
+  row.append(save, revert, note);
+  box.appendChild(row);
+  if (persona.self) box.appendChild(selfBox(persona.self));
+  updateHead();
+}
+
+function selfBox(s) {
+  const box = document.createElement("div");
+  box.className = "selfbox";
+  const h = document.createElement("h3");
+  h.textContent = "🐟 她自己改的";
+  const note = document.createElement("div");
+  note.className = "pmeta";
+  note.textContent = "这一小段是她自己写的，不是主人写的：每 "
+    + (s.hours || 24) + " 小时最多动一次，一次一条；只从私聊和网页里发生过的事长出来，"
+    + "群里的话不算。改动都留着底，能退回。";
+  box.append(h, note);
+
+  if (s.items && s.items.length) {
+    const list = document.createElement("div");
+    list.className = "selflist";
+    s.items.forEach((t) => {
+      const d = document.createElement("div");
+      d.className = "selfitem";
+      d.textContent = "· " + t;
+      list.appendChild(d);
+    });
+    box.appendChild(list);
+  } else {
+    const e = document.createElement("div");
+    e.className = "empty";
+    e.textContent = "还没自己改过什么。";
+    box.appendChild(e);
+  }
+
+  const row = document.createElement("div");
+  row.className = "pactions";
+  const think = document.createElement("button");
+  think.className = "chip";
+  think.textContent = "让她现在想想";
+  think.disabled = !s.enabled;
+  think.title = s.enabled ? (s.why || "") : "「她自己会变」关着";
+  think.onclick = reflectSelf;
+  const tg = document.createElement("button");
+  tg.className = "chip" + (s.enabled ? " on" : "");
+  tg.textContent = s.enabled ? "她自己会变：开" : "她自己会变：关";
+  tg.onclick = toggleSelf;
+  row.append(think, tg);
+  box.appendChild(row);
+
+  if (s.history && s.history.length) {
+    const log = document.createElement("div");
+    log.className = "selflog";
+    const title = document.createElement("div");
+    title.className = "pmeta";
+    title.textContent = "最近的改动：";
+    log.appendChild(title);
+    s.history.forEach((h) => {
+      const r = document.createElement("div");
+      r.className = "logrow";
+      const txt = document.createElement("span");
+      txt.textContent = (h.time || "") + " · " + (h.label || h.action || "")
+        + (h.text ? "：" + h.text : "")
+        + (h.reason ? "（" + h.reason + "）" : "");
+      r.appendChild(txt);
+      if (h.ts && h.action !== "revert") {
+        const b = document.createElement("button");
+        b.textContent = "回到这之前";
+        b.onclick = () => revertSelf(h.ts, h.time);
+        r.appendChild(b);
+      }
+      log.appendChild(r);
+    });
+    box.appendChild(log);
+  }
+  return box;
+}
+
+async function reflectSelf() {
+  if (!persona) return;
+  if (persona.dirty && !confirm("编辑框里还有没保存的改动，她会从磁盘上那份开始改，这些改动会丢。继续？")) return;
+  toast("她在翻最近的事，想一会儿…");
+  try {
+    const res = await fetch("/api/self/reflect", { method: "POST" });
+    const d = await res.json();
+    if (d.changed) toast("她" + d.label + "：" + d.text);
+    else toast(d.why || "这次没改");
+    await loadPersona(persona.file);
+  } catch (e) {
+    toast("没想成：服务没响应", true);
+  }
+}
+
+async function revertSelf(ts, when) {
+  if (!confirm("把她自己改的那一段退回到 " + (when || "这一步") + " 之前？")) return;
+  try {
+    const res = await fetch("/api/self/revert", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ts }),
+    });
+    const d = await res.json();
+    if (!d.ok) {
+      toast(d.why || "退不回去", true);
+      return;
+    }
+    toast("退回去了");
+    await loadPersona(persona.file);
+  } catch (e) {
+    toast("退不回去：服务没响应", true);
+  }
+}
+
+async function toggleSelf() {
+  if (!persona || !persona.self) return;
+  const on = !persona.self.enabled;
+  try {
+    const res = await fetch("/api/self/toggle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ on }),
+    });
+    const d = await res.json();
+    if (!res.ok) {
+      toast(d.error || "改不了开关", true);
+      return;
+    }
+    toast(on ? "她会慢慢变了" : "她停在现在这样了");
+    await loadPersona(persona.file);
+  } catch (e) {
+    toast("改不了开关：服务没响应", true);
+  }
+}
+
+async function savePersona() {
+  if (!persona) return;
+  try {
+    const res = await fetch("/api/persona", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file: persona.file, text: persona.text }),
+    });
+    const d = await res.json();
+    if (!res.ok) {
+      toast(d.error || "保存失败", true);
+      return;
+    }
+    persona.files = d.files || persona.files;
+    persona.text = d.text;
+    persona.dirty = false;
+    await loadPersona(persona.file);
+    toast("人格已保存，下一句话就按新的来");
+  } catch (e) {
+    toast("保存失败：服务没响应", true);
+  }
+}
+
+$("btnSettings").onclick = () => openSettings();
+$("btnSettings2").onclick = () => openSettings();
+$("setClose").onclick = closeSettings;
+$("setSave").onclick = saveSettings;
+$("setWide").onclick = () => applyFull(!$("setMask").classList.contains("full"));
+$("setMask").onclick = (e) => { if (e.target === $("setMask")) closeSettings(); };
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && $("setMask").classList.contains("on")) closeSettings();
+});
+
+setInterval(poll, 6000);
+
+loadSky();
+setInterval(loadSky, 5 * 60 * 1000);
+loadProactive();
+loadPause();
+// 直接打开记忆抽屉：http://127.0.0.1:8765/?mem=1
+if (new URLSearchParams(location.search).has("mem")) openMemories();
+// 直接打开设置：http://127.0.0.1:8765/?settings=1，或 ?settings=voice 直接进语音那页
+{
+  const sp = new URLSearchParams(location.search);
+  if (sp.has("settings")) openSettings(sp.get("settings") || "overview");
+}
+loadHistory();
+</script>
+</body>
+</html>

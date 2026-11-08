@@ -1,0 +1,10 @@
+# 大肥鱼 依赖
+# 现在走在线 API，不需要 torch / transformers / accelerate（省 4GB+）。
+# 想回本地跑 Qwen 再装：pip install torch transformers accelerate（见 README「显卡加速」）
+fastapi>=0.110
+uvicorn>=0.27
+openai>=1.30
+requests>=2.31
+python-multipart>=0.0.9
+edge-tts>=6.1
+faster-whisper>=1.2

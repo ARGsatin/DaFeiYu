@@ -1,0 +1,12 @@
+{
+  "default": "persona.md",
+  "rules": [
+    { "match": "qq:group:235069995", "file": "personas/qq-group-235069995.md" },
+    { "match": "qq:group:*", "file": "personas/qq-group.md" },
+    { "match": "qq:private:*", "file": "persona.md" },
+    { "match": "main", "file": "persona.md" }
+  ],
+  "search": {
+    "qq:group:235069995": "英雄联盟 LPL"
+  }
+}
